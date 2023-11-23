@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Data.Odbc;
-using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.HtmlControls;
@@ -13,7 +10,7 @@ using System.Web.UI.WebControls;
 
 namespace WebApplication1
 {
-    public partial class WebForm1 : System.Web.UI.Page
+    public partial class WebForm2 : System.Web.UI.Page
     {
         private OdbcConnection _connection;
         private int _jobNum;
@@ -144,7 +141,7 @@ namespace WebApplication1
                 }
                 catch (Exception ex)
                 {
-                    Utils.SetErrorStatus(Label5, ex.Message);
+                    Label5.Text = ex.Message;
                     transaction.Rollback();
                 }
                 finally
@@ -233,7 +230,7 @@ namespace WebApplication1
 
         protected void Button2_OnClick(object sender, EventArgs e)
         {
-            Page.Response.Redirect("WebForm2.aspx");
+            Page.Response.Redirect("WebForm1.aspx");
         }
     }
 }
