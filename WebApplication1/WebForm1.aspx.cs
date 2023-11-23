@@ -114,31 +114,38 @@ namespace WebApplication1
                     OdbcDataReader dataReader = _command.ExecuteReader();
 
                     Table1.Rows.Clear();
-                    Table1.Rows.Add(GetHeadRow());
-
-                    while (dataReader.Read())
+                    Label7.Text = string.Empty;
+                    if (dataReader.HasRows)
                     {
-                        HtmlTableRow row = new HtmlTableRow();
-                        HtmlTableCell cell = new HtmlTableCell();
+                        Table1.Rows.Add(GetHeadRow());
+                        while (dataReader.Read())
+                        {
+                            HtmlTableRow row = new HtmlTableRow();
+                            HtmlTableCell cell = new HtmlTableCell();
 
-                        cell.InnerText = dataReader["name"].ToString();
-                        row.Cells.Add(cell);
+                            cell.InnerText = dataReader["name"].ToString();
+                            row.Cells.Add(cell);
 
-                        cell = new HtmlTableCell();
-                        cell.InnerText = dataReader["cvet"].ToString();
-                        row.Cells.Add(cell);
+                            cell = new HtmlTableCell();
+                            cell.InnerText = dataReader["cvet"].ToString();
+                            row.Cells.Add(cell);
 
-                        cell = new HtmlTableCell();
-                        cell.InnerText = dataReader["ves"].ToString();
-                        row.Cells.Add(cell);
+                            cell = new HtmlTableCell();
+                            cell.InnerText = dataReader["ves"].ToString();
+                            row.Cells.Add(cell);
 
-                        cell = new HtmlTableCell();
-                        cell.InnerText = dataReader["town"].ToString();
-                        row.Cells.Add(cell);
+                            cell = new HtmlTableCell();
+                            cell.InnerText = dataReader["town"].ToString();
+                            row.Cells.Add(cell);
 
-                        Table1.Rows.Add(row);
+                            Table1.Rows.Add(row);
+                        }
                     }
-
+                    else
+                    {
+                        Label7.Text = "Данных не найдено";
+                    }
+                
                     transaction.Commit();
                     Utils.SetGoodStatus(Label5);
                 }
