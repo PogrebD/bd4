@@ -55,7 +55,7 @@
             <br />
             
             <div>
-                <table ID="Table1" runat="server"></table>
+                <asp:Label ID="Label6" runat="server" Text=""></asp:Label>
             </div>
         </div>
     </form>

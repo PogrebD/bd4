@@ -7,6 +7,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
+using System.Xml.Linq;
 
 namespace WebApplication1
 {
@@ -82,20 +83,15 @@ namespace WebApplication1
                 return;
             }
 
-            const string SQL = @"SELECT name, cvet, ves, town
-                                 FROM pmib0413.p
-                                 WHERE n_det in (SELECT pmib0413.q.n_det
-                                                 FROM pmib0413.q
-                                                 LEFT OUTER JOIN (SELECT pmib0413.spj1.n_det, sum(kol)
-                                                                  FROM pmib0413.spj1
-                                                                  WHERE n_izd = (SELECT n_izd
-                                                                                 FROM pmib0413.j
-                                                                                 WHERE name = ?)
-                                                                  GROUP BY n_det) AS buf ON pmib0413.q.n_det= buf.n_det
-                                                 WHERE pmib0413.q.n_izd = (SELECT n_izd
-                                                                  FROM pmib0413.j
-                                                                  WHERE name = ?)
-                                                 AND (pmib0413.q.kol*? > buf.sum OR buf.n_det IS NULL))";
+            const string SQL = @"update pmib0413.spj1 
+                                 set kol = kol + ?
+                                 where n_spj in (select n_spj 
+                                 from (select distinct on (n_det) n_det, date_post, n_spj 
+                                      from pmib0413.spj1 
+                                      where n_izd = (select n_izd 
+                                                     from pmib0413.j 
+                                                     where name = ?)
+                                      order by n_det, date_post desc) as buf)";
 
             using (OdbcCommand _command = new OdbcCommand(SQL, _connection))
             {
@@ -108,33 +104,9 @@ namespace WebApplication1
                     transaction = _connection.BeginTransaction();
                     _command.Transaction = transaction;
 
-                    OdbcDataReader dataReader = _command.ExecuteReader();
+                    int dataReader = _command.ExecuteNonQuery();
 
-                    Table1.Rows.Clear();
-                    Table1.Rows.Add(GetHeadRow());
-
-                    while (dataReader.Read())
-                    {
-                        HtmlTableRow row = new HtmlTableRow();
-                        HtmlTableCell cell = new HtmlTableCell();
-
-                        cell.InnerText = dataReader["name"].ToString();
-                        row.Cells.Add(cell);
-
-                        cell = new HtmlTableCell();
-                        cell.InnerText = dataReader["cvet"].ToString();
-                        row.Cells.Add(cell);
-
-                        cell = new HtmlTableCell();
-                        cell.InnerText = dataReader["ves"].ToString();
-                        row.Cells.Add(cell);
-
-                        cell = new HtmlTableCell();
-                        cell.InnerText = dataReader["town"].ToString();
-                        row.Cells.Add(cell);
-
-                        Table1.Rows.Add(row);
-                    }
+                    Label6.Text = "Обновлено записей:" + dataReader.ToString();
 
                     transaction.Commit();
                     Utils.SetGoodStatus(Label5);
@@ -151,45 +123,17 @@ namespace WebApplication1
             }
         }
 
-        private HtmlTableRow GetHeadRow()
-        {
-            HtmlTableRow row = new HtmlTableRow();
-            HtmlTableCell cell = new HtmlTableCell();
-
-            cell.InnerText = "name";
-            row.Cells.Add(cell);
-
-            cell = new HtmlTableCell();
-            cell.InnerText = "cvet";
-            row.Cells.Add(cell);
-
-            cell = new HtmlTableCell();
-            cell.InnerText = "ves";
-            row.Cells.Add(cell);
-
-            cell = new HtmlTableCell();
-            cell.InnerText = "town";
-            row.Cells.Add(cell);
-
-            return row;
-        }
-
         private void SetParameters(OdbcCommand command)
         {
-            OdbcParameter jobName = new OdbcParameter();
-            jobName.OdbcType = OdbcType.Text;
-            jobName.Value = _jobName;
-            command.Parameters.Add(jobName);
-
-            OdbcParameter jobName1 = new OdbcParameter();
-            jobName1.OdbcType = OdbcType.Text;
-            jobName1.Value = _jobName;
-            command.Parameters.Add(jobName1);
-
             OdbcParameter jobNum = new OdbcParameter();
             jobNum.OdbcType = OdbcType.Int;
             jobNum.Value = _jobNum;
             command.Parameters.Add(jobNum);
+
+            OdbcParameter jobName = new OdbcParameter();
+            jobName.OdbcType = OdbcType.Text;
+            jobName.Value = _jobName;
+            command.Parameters.Add(jobName);
         }
 
         private bool IsParametersValid()
