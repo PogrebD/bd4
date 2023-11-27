@@ -1,13 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Data.Odbc;
-using System.Diagnostics.Eventing.Reader;
-using System.Drawing;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Web;
-using System.Web.UI;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
 
@@ -18,11 +11,18 @@ namespace WebApplication1
         private OdbcConnection _connection;
         private int _jobNum;
 
-        private string _jobName
+        private string _jobId
         {
-            get => ViewState["_jobName"] as string ?? string.Empty;
-            set => ViewState["_jobName"] = value;
+            get => ViewState["_jobId"] as string ?? string.Empty;
+            set => ViewState["_jobId"] = value;
         }
+
+        private Dictionary<string, string> _dataBase
+        {
+            get => ViewState["_dataBase"] as Dictionary<string, string> ?? new Dictionary<string, string>();
+            set => ViewState["_dataBase"] = value;
+        }
+
         protected void Page_Load(object sender, EventArgs e)
         {
             // Создаем объект подключения
@@ -33,7 +33,7 @@ namespace WebApplication1
             // Подключаемся к БД
             _connection.Open();
             // Определяем строку с текстом запроса
-            string strSQL = "SELECT name FROM pmib0413.j";
+            string strSQL = "SELECT n_izd, name, town FROM pmib0413.j";
             // Создаем объект запроса
             OdbcCommand cmd = new OdbcCommand(strSQL, _connection);
 
@@ -51,11 +51,14 @@ namespace WebApplication1
 
                 if (JobDropDownList1.Items.Count == 0)
                 {
+                    _dataBase = new Dictionary<string, string>();
+
                     while (i.Read())
                     {
-                        var jobName = i["name"].ToString();
+                        string value = $"{i["name"].ToString()}, {i["town"].ToString()}";
+                        _dataBase.Add(value, i["n_izd"].ToString());
 
-                        JobDropDownList1.Items.Add(new ListItem(jobName));
+                        JobDropDownList1.Items.Add(new ListItem(value));
                     }
                 }
 
@@ -91,14 +94,12 @@ namespace WebApplication1
                                                  FROM pmib0413.q
                                                  LEFT OUTER JOIN (SELECT pmib0413.spj1.n_det, sum(kol)
                                                                   FROM pmib0413.spj1
-                                                                  WHERE n_izd = (SELECT n_izd
-                                                                                 FROM pmib0413.j
-                                                                                 WHERE name = ?)
+                                                                  WHERE n_izd = ?
                                                                   GROUP BY n_det) AS buf ON pmib0413.q.n_det= buf.n_det
-                                                 WHERE pmib0413.q.n_izd = (SELECT n_izd
-                                                                  FROM pmib0413.j
-                                                                  WHERE name = ?)
-                                                 AND (pmib0413.q.kol*? > buf.sum OR buf.n_det IS NULL))";
+                                                 WHERE pmib0413.q.n_izd = ?
+                                                 AND (pmib0413.q.kol*(? + (select sum(kol) 
+                                                                   from pmib0413.w 
+                                                                   where n_izd = ?)) > buf.sum OR buf.n_det IS NULL))";
 
             using (OdbcCommand _command = new OdbcCommand(SQL, _connection))
             {
@@ -186,20 +187,25 @@ namespace WebApplication1
 
         private void SetParameters(OdbcCommand command)
         {
-            OdbcParameter jobName = new OdbcParameter();
-            jobName.OdbcType = OdbcType.Text;
-            jobName.Value = _jobName;
-            command.Parameters.Add(jobName);
+            OdbcParameter jobId = new OdbcParameter();
+            jobId.OdbcType = OdbcType.Text;
+            jobId.Value = _jobId;
+            command.Parameters.Add(jobId);
 
-            OdbcParameter jobName1 = new OdbcParameter();
-            jobName1.OdbcType = OdbcType.Text;
-            jobName1.Value = _jobName;
-            command.Parameters.Add(jobName1);
+            OdbcParameter jobId1 = new OdbcParameter();
+            jobId1.OdbcType = OdbcType.Text;
+            jobId1.Value = _jobId;
+            command.Parameters.Add(jobId1);
 
             OdbcParameter jobNum = new OdbcParameter();
             jobNum.OdbcType = OdbcType.Int;
             jobNum.Value = _jobNum;
             command.Parameters.Add(jobNum);
+
+            OdbcParameter jobId2 = new OdbcParameter();
+            jobId2.OdbcType = OdbcType.Text;
+            jobId2.Value = _jobId;
+            command.Parameters.Add(jobId2);
         }
 
         private bool IsParametersValid()
@@ -211,7 +217,7 @@ namespace WebApplication1
         {
             if (JobDropDownList1.SelectedIndex >= 0)
             {
-                _jobName = JobDropDownList1.SelectedValue;
+                _jobId = _dataBase[JobDropDownList1.SelectedValue];
                 return true;
             }
             else

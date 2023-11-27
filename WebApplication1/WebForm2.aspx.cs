@@ -16,10 +16,16 @@ namespace WebApplication1
         private OdbcConnection _connection;
         private int _jobNum;
 
-        private string _jobName
+        private string _jobId
         {
-            get => ViewState["_jobName"] as string ?? string.Empty;
-            set => ViewState["_jobName"] = value;
+            get => ViewState["_jobId"] as string ?? string.Empty;
+            set => ViewState["_jobId"] = value;
+        }
+
+        private Dictionary<string, string> _dataBase
+        {
+            get => ViewState["_dataBase"] as Dictionary<string, string> ?? new Dictionary<string, string>();
+            set => ViewState["_dataBase"] = value;
         }
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -31,7 +37,7 @@ namespace WebApplication1
             // Подключаемся к БД
             _connection.Open();
             // Определяем строку с текстом запроса
-            string strSQL = "SELECT name FROM pmib0413.j";
+            string strSQL = "SELECT n_izd, name, town FROM pmib0413.j";
             // Создаем объект запроса
             OdbcCommand cmd = new OdbcCommand(strSQL, _connection);
 
@@ -49,11 +55,14 @@ namespace WebApplication1
 
                 if (JobDropDownList1.Items.Count == 0)
                 {
+                    _dataBase = new Dictionary<string, string>();
+
                     while (i.Read())
                     {
-                        var jobName = i["name"].ToString();
+                        string value = $"{i["name"].ToString()}, {i["town"].ToString()}";
+                        _dataBase.Add(value, i["n_izd"].ToString());
 
-                        JobDropDownList1.Items.Add(new ListItem(jobName));
+                        JobDropDownList1.Items.Add(new ListItem(value));
                     }
                 }
 
@@ -84,14 +93,13 @@ namespace WebApplication1
             }
 
             const string SQL = @"update pmib0413.spj1 
-                                 set kol = kol + ?
-                                 where n_spj in (select n_spj 
-                                 from (select distinct on (n_det) n_det, date_post, n_spj 
-                                      from pmib0413.spj1 
-                                      where n_izd = (select n_izd 
-                                                     from pmib0413.j 
-                                                     where name = ?)
-                                      order by n_det, date_post desc) as buf)";
+                                set kol = kol + ? 
+                                where n_spj in (select n_spj 
+                                                from pmib0413.spj1 
+                                                join (select max(distinct date_post), n_det 
+                                                      from pmib0413.spj1 
+                                                      where n_izd = ?
+                                                      group by n_det) as buf on (pmib0413.spj1.date_post = buf.max and pmib0413.spj1.n_det = buf.n_det))";
 
             using (OdbcCommand _command = new OdbcCommand(SQL, _connection))
             {
@@ -132,7 +140,7 @@ namespace WebApplication1
 
             OdbcParameter jobName = new OdbcParameter();
             jobName.OdbcType = OdbcType.Text;
-            jobName.Value = _jobName;
+            jobName.Value = _jobId;
             command.Parameters.Add(jobName);
         }
 
@@ -145,7 +153,7 @@ namespace WebApplication1
         {
             if (JobDropDownList1.SelectedIndex >= 0)
             {
-                _jobName = JobDropDownList1.SelectedValue;
+                _jobId = _dataBase[JobDropDownList1.SelectedValue];
                 return true;
             }
             else
