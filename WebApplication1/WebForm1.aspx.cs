@@ -97,7 +97,7 @@ namespace WebApplication1
                                                                   WHERE n_izd = ?
                                                                   GROUP BY n_det) AS buf ON pmib0413.q.n_det= buf.n_det
                                                  WHERE pmib0413.q.n_izd = ?
-                                                 AND (pmib0413.q.kol*(? + (select sum(kol) 
+                                                 AND (pmib0413.q.kol*(? + (select coalesce(sum(kol), 0) 
                                                                    from pmib0413.w 
                                                                    where n_izd = ?)) > buf.sum OR buf.n_det IS NULL))";
 
